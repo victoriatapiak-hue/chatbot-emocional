@@ -10,13 +10,12 @@ def normalizar(texto):
       if unicodedata.category(c) != 'Mn'
   )
   return texto
-  st.set_page_config(page_title="Chatbot emocional 💖", page_icon="💖")
+st.set_page_config(page_title="Chatbot emocional 💖", page_icon="💖")
 
 st.title("🤍 Estoy aquí para ti")
 st.caption("Este es un espacio seguro para expresar cómo te sientes")
 user_input = st.chat_input("Escribe cómo te sientes…")
 patterns = [
-
     (
         r'.*(hola|holi|hey|buenas).*',
         ['Hola 💖 ¿cómo te sientes hoy?']
