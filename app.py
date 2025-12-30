@@ -105,4 +105,5 @@ if user_input:
       respuesta = chatbot.respond(user_input_norm)
 
   st.session_state.mensajes.append(("assistant", respuesta))
+  st.rerun()
 
