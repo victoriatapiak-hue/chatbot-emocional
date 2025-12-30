@@ -105,6 +105,10 @@ if user_input:
 
     elif re.search(r'.*(gracias).*', user_input_norm):
         respuesta = "Gracias a ti por confiar 🤍"
+        
+    # despedida
+    elif re.search(r'.*(adiós|chau|nos vemos|hasta luego).*', user_input_norm):
+    respuesta= "Gracias por hablar conmigo, cuídate muchooo, ¡Hasta pronto!💖."
 
     else:
         respuesta = chatbot.respond(user_input_norm)
