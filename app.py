@@ -1,109 +1,118 @@
 import streamlit as st
-import re
 import random
-import unicodedata
+import re
 from nltk.chat.util import Chat, reflections
+
+# ------------------------------
+# FUNCIONES
+# ------------------------------
 def normalizar(texto):
-  texto = texto.lower()
-  texto = ''.join(
-      c for c in unicodedata.normalize('NFD', texto)
-      if unicodedata.category(c) != 'Mn'
-  )
-  return texto
-st.set_page_config(page_title="Chatbot emocional 💖", page_icon="💖")
+    return texto.lower().strip()
 
-st.title("🤍 Estoy aquí para ti")
-st.caption("Este es un espacio seguro para expresar cómo te sientes")
-user_input = st.chat_input("Escribe cómo te sientes…")
-patterns = [
-    (
-        r'.*(hola|holi|hey|buenas).*',
-        ['Hola 💖 ¿cómo te sientes hoy?']
-    ),
-
-    (
-        r'.*(bien|feliz|content).*',
-        ['Me alegra mucho leer eso 🥹']
-    ),
-
-    (
-        r'.*(triste|mal|deprimid|bajonead|vaci).*',
-        ['Siento que te sientas así 🫂 Estoy aquí contigo']
-    ),
-
-    (
-        r'.*(ansiedad|ansios|estres|estresad).*',
-        ['Respira conmigo un momento 🫁 Estoy aquí']
-    ),
-
-    (
-        r'.*(cansad|agotad|no doy mas).*',
-        ['Has cargado mucho 💔 Descansar también es necesario']
-    ),
-
-    (
-        r'.*',
-        ['Estoy aquí contigo 🫂 cuéntame más si quieres']
-    )
+# ------------------------------
+# DATOS DEL CHAT
+# ------------------------------
+pairs = [
+    [r"hola|holi|hey", ["Hola 🤍 estoy aquí contigo", "¡Hola! ¿Cómo te sientes hoy?"]],
+    [r"gracias", ["Gracias a ti por abrirte 🫂", "De nada, me alegra poder escucharte 🤍"]],
+    [r"(.*)", ["Gracias por compartir eso 💖", "Entiendo, sigue contándome"]]
 ]
-chatbot = Chat(patterns, reflections)
-if 'estado_emocional' not in st.session_state:
-  st.session_state.estado_emocional = None
 
-if 'contador_preguntas' not in st.session_state:
-  st.session_state.contador_preguntas = 0
+chatbot = Chat(pairs, reflections)
 
-if 'mensajes' not in st.session_state:
-  st.session_state.mensajes = []
 preguntas_apertura = {
-    'triste': [
-        '¿Quieres contarme qué es lo que más te duele ahora?',
-        'Estoy aquí, ¿qué pasó?'
-    ],
-    'ansioso': [
-        '¿Qué es lo que te tiene más inquieta ahora?',
-        'Cuéntame qué te está rondando la cabeza'
-    ],
-    'cansado': [
-        '¿Qué es lo que más te ha agotado últimamente?'
-    ]
+    "triste": ["¿Quieres contarme qué te tiene triste? 🥺", "Lo siento, ¿quieres hablar un poquito? 🤍"],
+    "ansioso": ["Respira profundo, ¿quieres contarme qué te pone ansioso?", "Vamos despacio, ¿qué pasa por tu cabeza? 💛"],
+    "cansado": ["Parece que necesitas descansar, ¿quieres que hablemos un rato tranquilamente?", "¿Quieres compartir cómo te sientes? 😌"]
 }
 
-if user_input:
-  user_input_norm = normalizar(user_input)
+# ------------------------------
+# INICIALIZACIÓN DE SESSION_STATE
+# ------------------------------
+if "mensajes" not in st.session_state:
+    st.session_state.mensajes = []
 
-  st.session_state.mensajes.append(("user", user_input))
+if "estado_emocional" not in st.session_state:
+    st.session_state.estado_emocional = None
 
-  # Detectar estado emocional
-  if re.search(r'.*(triste|mal|deprimid|bajonead|vaci).*', user_input_norm):
-      st.session_state.estado_emocional = 'triste'
+if "contador_preguntas" not in st.session_state:
+    st.session_state.contador_preguntas = 0
 
-  elif re.search(r'.*(ansiedad|ansios|estres|estresad).*', user_input_norm):
-      st.session_state.estado_emocional = 'ansioso'
+# ------------------------------
+# INTERFAZ STREAMLIT
+# ------------------------------
+st.set_page_config(page_title="Chatbot emocional 💖", page_icon="💖")
+st.title("🤍 Estoy aquí para ti")
+st.caption("Este es un espacio seguro para expresar cómo te sientes")
 
-  elif re.search(r'.*(cansad|agotad|no doy mas).*', user_input_norm):
-      st.session_state.estado_emocional = 'cansado'
+# ------------------------------
+# MENSAJE DE BIENVENIDA
+# ------------------------------
+if not st.session_state.mensajes:
+    st.info("🌸 Hola 🤍 Bienvenida, aquí puedes contarme cómo te sientes 🌸")
 
-  # 💖 Gracias con contexto
-  if re.search(r'.*(gracias|muchas gracias|thank).*', user_input_norm):
-      if st.session_state.estado_emocional in ['triste', 'ansioso', 'cansado']:
-          respuesta = "Gracias a ti por abrirte 🫂 de verdad"
-      else:
-          respuesta = "Siempre 💖 no hay de qué"
-
-  # 🫂 Apertura de conversación (una vez)
-  elif st.session_state.estado_emocional and st.session_state.contador_preguntas < 1:
-      respuesta = random.choice(
-          preguntas_apertura[st.session_state.estado_emocional]
-      )
-      st.session_state.contador_preguntas += 1
-
-  else:
-      respuesta = chatbot.respond(user_input_norm)
-
-  st.session_state.mensajes.append(("assistant", respuesta))
-  st.rerun()
+# ------------------------------
+# HISTORIAL DE MENSAJES CON BURBUJAS PASTEL
+# ------------------------------
 for autor, texto in st.session_state.mensajes:
-  with st.chat_message(autor):
-      st.markdown(texto)
+    if autor == "user":
+        with st.chat_message("user"):
+            st.markdown(
+                f"<div style='background-color:#FFD6E0; color:#000; padding:10px; border-radius:12px; max-width:80%;'>{texto}</div>",
+                unsafe_allow_html=True
+            )
+    else:
+        with st.chat_message("assistant"):
+            st.markdown(
+                f"<div style='background-color:#D6F0FF; color:#000; padding:10px; border-radius:12px; max-width:80%;'>{texto}</div>",
+                unsafe_allow_html=True
+            )
 
+# ------------------------------
+# INPUT DEL USUARIO
+# ------------------------------
+user_input = st.chat_input("Escribe cómo te sientes…")
+
+# ------------------------------
+# LÓGICA DEL CHAT
+# ------------------------------
+if user_input:
+    user_input_norm = normalizar(user_input)
+
+    # mostrar mensaje usuario
+    st.session_state.mensajes.append(("user", user_input))
+    with st.chat_message("user"):
+        st.markdown(
+            f"<div style='background-color:#FFD6E0; color:#000; padding:10px; border-radius:12px; max-width:80%;'>{user_input}</div>",
+            unsafe_allow_html=True
+        )
+
+    # detectar emociones
+    if re.search(r'.*(triste|mal|deprimid|bajonead|vaci).*', user_input_norm):
+        st.session_state.estado_emocional = 'triste'
+        respuesta = random.choice(preguntas_apertura['triste'])
+        st.session_state.contador_preguntas += 1
+
+    elif re.search(r'.*(ansiedad|ansios|estres).*', user_input_norm):
+        st.session_state.estado_emocional = 'ansioso'
+        respuesta = random.choice(preguntas_apertura['ansioso'])
+        st.session_state.contador_preguntas += 1
+
+    elif re.search(r'.*(cansad|agotad).*', user_input_norm):
+        st.session_state.estado_emocional = 'cansado'
+        respuesta = random.choice(preguntas_apertura['cansado'])
+        st.session_state.contador_preguntas += 1
+
+    elif re.search(r'.*(gracias).*', user_input_norm):
+        respuesta = "Gracias a ti por confiar 🤍"
+
+    else:
+        respuesta = chatbot.respond(user_input_norm)
+
+    # mostrar respuesta inmediatamente
+    st.session_state.mensajes.append(("assistant", respuesta))
+    with st.chat_message("assistant"):
+        st.markdown(
+            f"<div style='background-color:#D6F0FF; color:#000; padding:10px; border-radius:12px; max-width:80%;'>{respuesta}</div>",
+            unsafe_allow_html=True
+        )
