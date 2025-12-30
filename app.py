@@ -10,6 +10,11 @@ def normalizar(texto):
       if unicodedata.category(c) != 'Mn'
   )
   return texto
+  st.set_page_config(page_title="Chatbot emocional 💖", page_icon="💖")
+
+st.title("🤍 Estoy aquí para ti")
+st.caption("Este es un espacio seguro para expresar cómo te sientes")
+user_input = st.chat_input("Escribe cómo te sientes…")
 patterns = [
 
     (
@@ -64,14 +69,7 @@ preguntas_apertura = {
         '¿Qué es lo que más te ha agotado últimamente?'
     ]
 }
-st.set_page_config(page_title="Chatbot emocional 💖", page_icon="💖")
 
-st.title("🤍 Estoy aquí para ti")
-st.caption("Este es un espacio seguro para expresar cómo te sientes")
-for autor, texto in st.session_state.mensajes:
-  with st.chat_message(autor):
-      st.markdown(texto)
-user_input = st.chat_input("Escribe cómo te sientes…")
 if user_input:
   user_input_norm = normalizar(user_input)
 
@@ -106,4 +104,7 @@ if user_input:
 
   st.session_state.mensajes.append(("assistant", respuesta))
   st.rerun()
+for autor, texto in st.session_state.mensajes:
+  with st.chat_message(autor):
+      st.markdown(texto)
 
