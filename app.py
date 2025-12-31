@@ -2,35 +2,13 @@ import streamlit as st
 import random
 import re
 from nltk.chat.util import Chat, reflections
+import os
 import openai
 
 # ------------------------------
 # CONFIGURACIÓN IA
 # ------------------------------
-openai.api_key = "TU_API_KEY"  # Mejor usar variable de entorno en producción
-
-def obtener_respuesta_ia(mensaje, contexto_emocional=None, pronombres=None):
-    prompt = mensaje
-    if contexto_emocional:
-        prompt = f"El usuario se siente {contexto_emocional}. Responde de manera empática y comprensiva: {mensaje}"
-    if pronombres:
-        prompt += f" Usa los pronombres: {pronombres}."
-    try:
-        respuesta = openai.ChatCompletion.create(
-            model="gpt-5-mini",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return respuesta.choices[0].message["content"]
-    except Exception as e:
-        return "Ups, hubo un error con la IA 😅"
-
-# ------------------------------
-# FUNCIONES
-# ------------------------------
-def normalizar(texto):
-    return texto.lower().strip()
-
-# ------------------------------
+openai.api_key = os.getenv("OPENAI_API_KEY")
 # DATOS DEL CHAT
 # ------------------------------
 pairs = [
