@@ -5,6 +5,8 @@ from nltk.chat.util import Chat, reflections
 import os
 import openai
 
+def normalizar(texto):
+    return texto.lower().strip()
 # ------------------------------
 # CONFIGURACIÓN IA
 # ------------------------------
