@@ -190,4 +190,3 @@ if st.session_state.pronombres:
 
         st.session_state.mensajes.append(("assistant", respuesta))
         st.rerun()
-
