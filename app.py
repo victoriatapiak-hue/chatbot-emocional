@@ -5,7 +5,9 @@ import streamlit as st
 import random
 import re
 import os
+import nltk
 from nltk.chat.util import Chat, reflections
+nltk.download('punkt')
 from openai import OpenAI
 
 
