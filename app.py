@@ -11,12 +11,12 @@ nltk.download('punkt')
 from openai import OpenAI
 
 # ------------------------------
-# CONFIG STREAMLIT
+# CONFIGURACIÓN STREAMLIT
 # ------------------------------
 st.set_page_config(page_title="Chatbot emocional", page_icon="🤍")
 
 # ------------------------------
-# CONFIG OPENAI
+# CONFIGURACIÓN OPENAI
 # ------------------------------
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -24,9 +24,11 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # FUNCIONES AUXILIARES
 # ------------------------------
 def normalizar(texto):
+    """Convierte texto a minúsculas y elimina espacios al inicio y fin"""
     return texto.lower().strip()
 
 def detectar_tema(texto):
+    """Detecta el tema principal del mensaje"""
     if re.search(r"(mamá|madre|papá|padre|hermano|hermana|familia)", texto):
         return "familia"
     if re.search(r"(u|universidad|estudio|prueba|examen)", texto):
@@ -40,10 +42,12 @@ def detectar_tema(texto):
     return "general"
 
 def tema_repetido(tema):
+    """Verifica si el tema se ha mencionado varias veces recientemente"""
     ultimos = st.session_state.historial_temas[-3:]
     return ultimos.count(tema) >= 2
 
 def sugerir_micro_accion(emocion):
+    """Devuelve una microacción según la emoción detectada"""
     acciones = {
         "triste":"Si te parece, ahora mismo podríamos hacer algo muy chiquito: apoyar los pies en el suelo y respirar lento 10 segundos 🤍",
         "ansioso":"Tal vez podríamos pausar un segundo... inhala lento por la nariz y suelta despacio 🤍",
@@ -52,6 +56,7 @@ def sugerir_micro_accion(emocion):
     return acciones.get(emocion)
 
 def obtener_respuesta_ia(mensaje, contexto_emocional=None, tema=None, pronombres=None):
+    """Obtiene la respuesta de la IA con tono empático, cruzando emoción y tema"""
     prompt = (
         "Responde de forma empática, cercana y humana. "
         "No des discursos largos ni consejos forzados. "
@@ -75,17 +80,27 @@ def obtener_respuesta_ia(mensaje, contexto_emocional=None, tema=None, pronombres
         return "Ups, algo falló 😅 pero sigo aquí contigo 🤍"
 
 # ------------------------------
-# CHAT CLÁSICO
+# CHAT CLÁSICO (respuestas no genéricas para fallback)
 # ------------------------------
 pairs = [
-    [r"hola|holi|hey", ["Hola 🤍 estoy aquí contigo", "Hola 🤍 puedes tomarte tu tiempo para hablar"]],
-    [r"gracias", ["Gracias a ti por confiar 🤍", "Me alegra que estés aquí 🫂"]],
-    [r"(.*)", ["Te leo 🤍 ¿qué es lo que más te pesa ahora?", "Gracias por decirlo… ¿qué parte de esto es la más difícil?", "Estoy contigo, puedes seguir si quieres"]]
+    [r"hola|holi|hey", [
+        "Hola 🤍 estoy aquí contigo",
+        "Hola 🤍 puedes tomarte tu tiempo para hablar"
+    ]],
+    [r"gracias", [
+        "Gracias a ti por confiar 🤍",
+        "Me alegra que estés aquí 🫂"
+    ]],
+    [r"(.*)", [
+        "Te leo 🤍 ¿qué es lo que más te pesa ahora?",
+        "Gracias por decirlo… ¿qué parte de esto es la más difícil?",
+        "Estoy contigo, puedes seguir si quieres"
+    ]]
 ]
 chatbot = Chat(pairs, reflections)
 
 # ------------------------------
-# SESSION STATE
+# SESSION STATE (inicialización)
 # ------------------------------
 if "mensajes" not in st.session_state:
     st.session_state.mensajes = []
@@ -98,7 +113,7 @@ if "ultimo_estado_emocional" not in st.session_state:
 if "alerta_disparada" not in st.session_state:
     st.session_state.alerta_disparada = {}
 if "nuevo_input" not in st.session_state:
-    st.session_state.nuevo_input = False  # FLAG para rerun controlado
+    st.session_state.nuevo_input = False  # Flag para rerun controlado
 
 # ------------------------------
 # SELECCIÓN DE PRONOMBRES
@@ -117,22 +132,36 @@ if st.session_state.pronombres:
     st.title("🤍 Estoy aquí para ti")
     st.caption("Este es un espacio seguro para expresar cómo te sientes")
     if not st.session_state.mensajes:
-        st.info("Estoy aquí para escucharte, sin apuro 🤍\n\nSi no sabes por dónde empezar, puedes escribir cosas como:\n“me siento…”, “hoy fue un día…” o “tengo esto dando vueltas en la cabeza”.")
+        st.info(
+            "Estoy aquí para escucharte, sin apuro 🤍\n\n"
+            "Si no sabes por dónde empezar, puedes escribir cosas como:\n"
+            "“me siento…”, “hoy fue un día…” o “tengo esto dando vueltas en la cabeza”."
+        )
 
-    # HISTORIAL
+    # ------------------------------
+    # MOSTRAR HISTORIAL
+    # ------------------------------
     for autor, texto in st.session_state.mensajes:
         with st.chat_message(autor):
             bg = "#FFE4E1" if autor=="user" else "#E0FFFF"
-            st.markdown(f"<div style='background-color:{bg};padding:12px 16px;border-radius:20px;max-width:75%;'>{texto}</div>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div style='background-color:{bg};padding:12px 16px;border-radius:20px;max-width:75%;'>{texto}</div>",
+                unsafe_allow_html=True
+            )
 
+    # ------------------------------
+    # INPUT USUARIO
+    # ------------------------------
     user_input = st.chat_input("Escribe lo que quieras compartir…")
 
     if user_input:
-        st.session_state.nuevo_input = True  # Marcamos que hay nuevo input
+        st.session_state.nuevo_input = True  # Flag para rerun controlado
         user_input_norm = normalizar(user_input)
         st.session_state.mensajes.append(("user", user_input))
 
-        # EMOCIÓN
+        # ------------------------------
+        # DETECCIÓN DE EMOCIÓN
+        # ------------------------------
         emocion_detectada = None
         if re.search(r"(triste|mal|deprimid|bajonead|vaci)", user_input_norm):
             emocion_detectada = "triste"
@@ -141,11 +170,15 @@ if st.session_state.pronombres:
         elif re.search(r"(cansad|agotad|abrumad)", user_input_norm):
             emocion_detectada = "cansado"
 
-        # TEMA
+        # ------------------------------
+        # DETECCIÓN DE TEMA
+        # ------------------------------
         tema_detectado = detectar_tema(user_input_norm)
         st.session_state.historial_temas.append(tema_detectado)
 
-        # ALERTA SUAVE
+        # ------------------------------
+        # ALERTA SUAVE POR REPETICIÓN DE TEMA
+        # ------------------------------
         alerta_repeticion = tema_repetido(tema_detectado)
         if alerta_repeticion and not st.session_state.alerta_disparada.get(tema_detectado, False):
             alerta_msg = f"\n\nHe notado que el tema de {tema_detectado} aparece varias veces 🤍 si quieres, podemos mirarlo con más calma."
@@ -153,19 +186,26 @@ if st.session_state.pronombres:
         else:
             alerta_msg = ""
 
+        # ------------------------------
         # MEMORIA CORTA EMOCIONAL
+        # ------------------------------
         memoria_emocional = ""
         if st.session_state.ultimo_estado_emocional == emocion_detectada and emocion_detectada:
             memoria_emocional = f"Antes mencionaste sentirte {emocion_detectada}, y parece que eso sigue ahí 🤍 "
 
         st.session_state.ultimo_estado_emocional = emocion_detectada
 
+        # ------------------------------
         # CIERRES CONSCIENTES
+        # ------------------------------
         if re.search(r"(adiós|chau|hasta luego|me voy)", user_input_norm):
             respuesta = "Gracias por compartir esto conmigo 🤍\n\nTómate el tiempo que necesites. Puedes volver cuando quieras."
         elif re.search(r"(gracias)", user_input_norm):
             respuesta = "Gracias a ti por confiar 🤍"
         else:
+            # ------------------------------
+            # RESPUESTA PRINCIPAL
+            # ------------------------------
             if emocion_detectada:
                 respuesta = obtener_respuesta_ia(
                     mensaje=memoria_emocional + user_input,
@@ -173,23 +213,22 @@ if st.session_state.pronombres:
                     tema=tema_detectado,
                     pronombres=st.session_state.pronombres
                 )
-                # AÑADIR ALERTA SUAVE
-                respuesta += alerta_msg
-
-                # MICRO-ACCIÓN
+                respuesta += alerta_msg  # Agregamos alerta
                 micro = sugerir_micro_accion(emocion_detectada)
                 if micro:
                     respuesta += f"\n\n{micro}"
             else:
                 respuesta = chatbot.respond(user_input_norm)
                 if not respuesta:
-                    respuesta = obtener_respuesta_ia(user_input, pronombres=st.session_state.pronombres)
+                    respuesta = obtener_respuesta_ia(
+                        user_input,
+                        pronombres=st.session_state.pronombres
+                    )
 
+        # ------------------------------
+        # GUARDAR RESPUESTA Y RERUN CONTROLADO
+        # ------------------------------
         st.session_state.mensajes.append(("assistant", respuesta))
-
-        # ------------------------------
-        # RERUN CONTROLADO
-        # ------------------------------
         if st.session_state.nuevo_input:
             st.session_state.nuevo_input = False
             st.rerun()
