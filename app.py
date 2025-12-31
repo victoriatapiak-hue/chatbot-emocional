@@ -10,38 +10,44 @@ from openai import OpenAI
 
 
 # ------------------------------
+# CONFIG STREAMLIT
+# ------------------------------
+st.set_page_config(page_title="Chatbot emocional", page_icon="🤍")
+
+
+# ------------------------------
 # CONFIGURACIÓN OPENAI
-# (LA API KEY VA EN STREAMLIT SECRETS)
 # ------------------------------
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 # ------------------------------
-# FUNCIÓN IA
+# FUNCIÓN IA (tono controlado)
 # ------------------------------
 def obtener_respuesta_ia(mensaje, contexto_emocional=None, pronombres=None):
-    prompt = mensaje
+    prompt = (
+        "Responde de forma empática, cercana y humana. "
+        "No des discursos largos ni consejos forzados. "
+        "Refleja lo que la persona siente y haz solo UNA pregunta suave.\n\n"
+    )
 
     if contexto_emocional:
-        prompt = (
-            f"El usuario se siente {contexto_emocional}. "
-            f"Responde de forma empática, cálida y comprensiva: {mensaje}"
-        )
+        prompt += f"La persona se siente {contexto_emocional}. "
 
     if pronombres:
-        prompt += f" Usa pronombres {pronombres.lower()}."
+        prompt += f"Usa pronombres {pronombres.lower()}. "
+
+    prompt += f"Mensaje: {mensaje}"
 
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
+            messages=[{"role": "user", "content": prompt}]
         )
         return response.choices[0].message.content
 
-    except Exception as e:
-        return "Ups, algo falló con la IA 😅 pero sigo aquí contigo 🤍"
+    except Exception:
+        return "Ups, algo falló 😅 pero sigo aquí contigo 🤍"
 
 
 # ------------------------------
@@ -52,34 +58,25 @@ def normalizar(texto):
 
 
 # ------------------------------
-# DATOS DEL CHAT CLÁSICO (NLTK)
+# CHAT CLÁSICO (RESPUESTAS NO GENÉRICAS)
 # ------------------------------
 pairs = [
-    [r"hola|holi|hey", ["Hola 🤍 estoy aquí contigo", "¡Hola! ¿Cómo te sientes hoy?"]],
-    [r"gracias", ["Gracias a ti por abrirte 🫂", "De nada, me alegra escucharte 🤍"]],
-    [r"(.*)", ["Gracias por compartir eso 💖", "Entiendo, sigue contándome"]]
+    [r"hola|holi|hey", [
+        "Hola 🤍 estoy aquí contigo",
+        "Hola 🤍 puedes tomarte tu tiempo para hablar"
+    ]],
+    [r"gracias", [
+        "Gracias a ti por confiar 🤍",
+        "Me alegra que estés aquí 🫂"
+    ]],
+    [r"(.*)", [
+        "Te leo 🤍 ¿qué es lo que más te pesa ahora?",
+        "Gracias por decirlo… ¿qué parte de esto es la más difícil?",
+        "Estoy contigo, puedes seguir si quieres"
+    ]]
 ]
 
 chatbot = Chat(pairs, reflections)
-
-
-# ------------------------------
-# PREGUNTAS POR EMOCIÓN
-# ------------------------------
-preguntas_apertura = {
-    "triste": [
-        "¿Quieres contarme qué te tiene triste? 🥺",
-        "Lo siento, ¿quieres hablar un poquito? 🤍"
-    ],
-    "ansioso": [
-        "Vamos despacio, ¿qué te está generando ansiedad?",
-        "Respira conmigo, ¿qué pasa por tu cabeza? 💛"
-    ],
-    "cansado": [
-        "Suena a que estás agotada, ¿quieres hablarlo?",
-        "¿Ha sido un día pesado? 😌"
-    ]
-}
 
 
 # ------------------------------
@@ -87,12 +84,6 @@ preguntas_apertura = {
 # ------------------------------
 if "mensajes" not in st.session_state:
     st.session_state.mensajes = []
-
-if "estado_emocional" not in st.session_state:
-    st.session_state.estado_emocional = None
-
-if "contador_preguntas" not in st.session_state:
-    st.session_state.contador_preguntas = 0
 
 if "pronombres" not in st.session_state:
     st.session_state.pronombres = None
@@ -121,9 +112,13 @@ if st.session_state.pronombres:
     st.title("🤍 Estoy aquí para ti")
     st.caption("Este es un espacio seguro para expresar cómo te sientes")
 
+    # MENSAJE INICIAL + GUÍA (CAMBIO CLAVE)
     if not st.session_state.mensajes:
-        st.info("Hola 🤍 Puedes contarme cómo te sientes")
-
+        st.info(
+            "Estoy aquí para escucharte, sin apuro 🤍\n\n"
+            "Si no sabes por dónde empezar, puedes escribir cosas como:\n"
+            "“me siento…”, “hoy fue un día…” o “tengo esto dando vueltas en la cabeza”."
+        )
 
     # ------------------------------
     # MOSTRAR HISTORIAL
@@ -147,38 +142,33 @@ if st.session_state.pronombres:
                 unsafe_allow_html=True
             )
 
-
     # ------------------------------
     # INPUT USUARIO
     # ------------------------------
-    user_input = st.chat_input("Escribe cómo te sientes…")
-
+    user_input = st.chat_input("Escribe lo que quieras compartir…")
 
     # ------------------------------
     # LÓGICA DEL CHAT
     # ------------------------------
     if user_input:
         user_input_norm = normalizar(user_input)
-
-        # guardar mensaje usuario
         st.session_state.mensajes.append(("user", user_input))
 
-        # detectar emoción
         emocion_detectada = None
 
         if re.search(r"(triste|mal|deprimid|bajonead|vaci)", user_input_norm):
             emocion_detectada = "triste"
-
         elif re.search(r"(ansiedad|ansios|estres)", user_input_norm):
             emocion_detectada = "ansioso"
-
-        elif re.search(r"(cansad|agotad)", user_input_norm):
+        elif re.search(r"(cansad|agotad|abrumad)", user_input_norm):
             emocion_detectada = "cansado"
 
-
-        # despedidas
-        if re.search(r"(adiós|chau|hasta luego)", user_input_norm):
-            respuesta = "💖 Gracias por hablar conmigo, cuídate mucho 🤍"
+        # CIERRE BONITO (INTEGRACIÓN 5 💖)
+        if re.search(r"(adiós|chau|hasta luego|me voy)", user_input_norm):
+            respuesta = (
+                "Gracias por compartir esto conmigo 🤍\n\n"
+                "Tómate el tiempo que necesites. Puedes volver cuando quieras."
+            )
 
         elif re.search(r"(gracias)", user_input_norm):
             respuesta = "Gracias a ti por confiar 🤍"
@@ -200,3 +190,4 @@ if st.session_state.pronombres:
 
         st.session_state.mensajes.append(("assistant", respuesta))
         st.rerun()
+
