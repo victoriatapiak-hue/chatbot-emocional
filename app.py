@@ -122,7 +122,7 @@ if st.session_state.pronombres:
     st.caption("Este es un espacio seguro para expresar cómo te sientes")
 
     if not st.session_state.mensajes:
-        st.info("🌸 Hola 🤍 Puedes contarme cómo te sientes")
+        st.info("Hola 🤍 Puedes contarme cómo te sientes")
 
 
     # ------------------------------
