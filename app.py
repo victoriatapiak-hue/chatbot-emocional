@@ -58,6 +58,32 @@ def obtener_respuesta_ia(mensaje, contexto_emocional=None, pronombres=None):
 def normalizar(texto):
     return texto.lower().strip()
 
+def detectar_tema(texto):
+    if re.search(r"(mamá|madre|papá|padre|hermano|hermana|familia)", texto):
+        return "familia"
+    if re.search(r"(u|universidad|estudio|prueba|examen)", texto):
+        return "estudio"
+    if re.search(r"(pareja|polola|pololo|relación)", texto):
+        return "relaciones"
+    if re.search(r"(trabajo|pega|jefe)", texto):
+        return "trabajo"
+    if re.search(r"(yo|autoestima|me siento inútil|no valgo)", texto):
+        return "autoestima"
+    return "general"
+
+def tema_repetido(tema):
+    ultimos= st.session_state.historial_temas[-3:]
+    return ultimos.count(tema)>=2
+
+def sugerir_micro_accion(emocion):
+    acciones={
+        "triste":"Si te parece, ahora mismo podríamos hacer algo muy chiquito: apoyar los pies en el suelo y respirar lento 10 segundos 🤍",
+        "ansioso":"Tal vez podríamos pausar un segundo... inhala lento por la nariz y suelta despacio 🤍",
+        "cansado":"Quizás ahora mismo solo necesitas aflojar los hombros y soltar un poco el cuerpo 🤍"
+    }
+    return acciones.get(emocion)
+                 
+
 
 # ------------------------------
 # CHAT CLÁSICO (RESPUESTAS NO GENÉRICAS)
@@ -90,7 +116,12 @@ if "mensajes" not in st.session_state:
 if "pronombres" not in st.session_state:
     st.session_state.pronombres = None
 
-
+if "historial_temas" not in st.session_state: 
+    st.session_state.historial_temas = []
+    
+if "ultimo_estado_emocional" not in st.session_state:
+    st.session_state.ultimo_estado_emocional = None
+    
 # ------------------------------
 # SELECCIÓN DE PRONOMBRES
 # ------------------------------
@@ -153,42 +184,67 @@ if st.session_state.pronombres:
     # LÓGICA DEL CHAT
     # ------------------------------
     if user_input:
-        user_input_norm = normalizar(user_input)
-        st.session_state.mensajes.append(("user", user_input))
+    user_input_norm = normalizar(user_input)
+    st.session_state.mensajes.append(("user", user_input))
 
-        emocion_detectada = None
+    emocion_detectada = None
+    if re.search(r"(triste|mal|deprimid|bajonead|vaci)", user_input_norm):
+        emocion_detectada = "triste"
+    elif re.search(r"(ansiedad|ansios|estres)", user_input_norm):
+        emocion_detectada = "ansioso"
+    elif re.search(r"(cansad|agotad|abrumad)", user_input_norm):
+        emocion_detectada = "cansado"
 
-        if re.search(r"(triste|mal|deprimid|bajonead|vaci)", user_input_norm):
-            emocion_detectada = "triste"
-        elif re.search(r"(ansiedad|ansios|estres)", user_input_norm):
-            emocion_detectada = "ansioso"
-        elif re.search(r"(cansad|agotad|abrumad)", user_input_norm):
-            emocion_detectada = "cansado"
+    # detectar tema
+    tema_detectado = detectar_tema(user_input_norm)
+    st.session_state.historial_temas.append(tema_detectado)
 
-        # CIERRE BONITO (INTEGRACIÓN 5 💖)
-        if re.search(r"(adiós|chau|hasta luego|me voy)", user_input_norm):
-            respuesta = (
-                "Gracias por compartir esto conmigo 🤍\n\n"
-                "Tómate el tiempo que necesites. Puedes volver cuando quieras."
+    alerta_repeticion = tema_repetido(tema_detectado)
+
+    # memoria corta emoción
+    memoria_emocional = ""
+    if st.session_state.ultimo_estado_emocional and emocion_detectada:
+        if st.session_state.ultimo_estado_emocional == emocion_detectada:
+            memoria_emocional = f"Antes mencionaste sentirte {emocion_detectada}, y parece que eso sigue ahí 🤍 "
+
+    st.session_state.ultimo_estado_emocional = emocion_detectada
+
+    # cierres
+    if re.search(r"(adiós|chau|hasta luego|me voy)", user_input_norm):
+        respuesta = (
+            "Gracias por compartir esto conmigo 🤍\n\n"
+            "Tómate el tiempo que necesites. Puedes volver cuando quieras."
+        )
+
+    elif re.search(r"(gracias)", user_input_norm):
+        respuesta = "Gracias a ti por confiar 🤍"
+
+    else:
+        if emocion_detectada:
+            respuesta = obtener_respuesta_ia(
+                mensaje=memoria_emocional + user_input,
+                contexto_emocional=emocion_detectada,
+                pronombres=st.session_state.pronombres
             )
 
-        elif re.search(r"(gracias)", user_input_norm):
-            respuesta = "Gracias a ti por confiar 🤍"
+            if alerta_repeticion:
+                respuesta += (
+                    f"\n\nHe notado que el tema de {tema_detectado} aparece varias veces 🤍 "
+                    "si quieres, podemos mirarlo con más calma."
+                )
+
+            micro = sugerir_micro_accion(emocion_detectada)
+            if micro:
+                respuesta += f"\n\n{micro}"
 
         else:
-            if emocion_detectada:
+            respuesta = chatbot.respond(user_input_norm)
+            if not respuesta:
                 respuesta = obtener_respuesta_ia(
                     user_input,
-                    contexto_emocional=emocion_detectada,
                     pronombres=st.session_state.pronombres
                 )
-            else:
-                respuesta = chatbot.respond(user_input_norm)
-                if not respuesta:
-                    respuesta = obtener_respuesta_ia(
-                        user_input,
-                        pronombres=st.session_state.pronombres
-                    )
 
-        st.session_state.mensajes.append(("assistant", respuesta))
-        st.rerun()
+    st.session_state.mensajes.append(("assistant", respuesta))
+    st.rerun()
+
